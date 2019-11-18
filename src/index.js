@@ -1,9 +1,10 @@
-import React, { forwardRef } from 'react'
+import React, { forwardRef, useCallback } from 'react'
 import PropTypes from 'prop-types'
 
 import { FixedSizeList as List } from 'react-window'
 import AutoSizer from 'react-virtualized-auto-sizer'
 import InfiniteLoader from 'react-window-infinite-loader'
+import { Scrollbars } from 'react-custom-scrollbars'
 
 InfiniteLoading.propTypes = {
   hasMoreItems: PropTypes.bool,
@@ -11,13 +12,19 @@ InfiniteLoading.propTypes = {
   itemsCount: PropTypes.number,
   children: PropTypes.array.isRequired,
   itemHeight: PropTypes.number.isRequired,
-  placeholder: PropTypes.node
+  placeholder: PropTypes.node,
+  customScrollbar: PropTypes.boolean,
 }
 
 InfiniteLoading.defaultProps = {
   hasMoreItems: false,
+  customScrollbar: false,
   loadMoreItems: () => {}
 }
+
+const CustomScrollbarsVirtualList = React.forwardRef((props, ref) => (
+  <CustomScrollbars {...props} forwardedRef={ref} />
+))
 
 function InfiniteLoading({
   children,
@@ -25,11 +32,12 @@ function InfiniteLoading({
   itemsCount,
   itemHeight,
   loadMoreItems,
-  placeholder
+  placeholder,
+  customScrollbar
 }, ref) {
   let effectiveCount = itemsCount
   if (effectiveCount === undefined) {
-      effectiveCount = hasMoreItems ? children.length + 1 : children.length
+    effectiveCount = hasMoreItems ? children.length + 1 : children.length
   }
 
   const isItemLoaded = index => !hasMoreItems || index < children.length
@@ -51,6 +59,7 @@ function InfiniteLoading({
               onItemsRendered={onItemsRendered}
               ref={ref}
               width={width}
+              outerElementType={customScrollbar ? CustomScrollbarsVirtualList : null}
             >
               {({ index, style }) => (
                 <div style={style}>
@@ -62,6 +71,33 @@ function InfiniteLoading({
         </InfiniteLoader>
       )}
     </AutoSizer>
+  )
+}
+
+CustomScrollbars.propTypes = {
+  onScroll: PropTypes.func.isRequired,
+  forwardedRef: PropTypes.node.isRequired,
+  style: PropTypes.object.isRequired,
+  children: PropTypes.node.isRequired
+}
+
+function CustomScrollbars ({ onScroll, forwardedRef, style, children }) {
+  const refSetter = useCallback(scrollbarsRef => {
+    if (scrollbarsRef) {
+      forwardedRef(scrollbarsRef.view)
+    } else {
+      forwardedRef(null)
+    }
+  }, [])
+
+  return (
+    <Scrollbars
+      ref={refSetter}
+      style={{ ...style, overflow: 'hidden' }}
+      onScroll={onScroll}
+    >
+      {children}
+    </Scrollbars>
   )
 }
 
